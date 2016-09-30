@@ -38,6 +38,7 @@ import Test.Expectation
 import Dict exposing (Dict)
 import Set exposing (Set)
 import String
+import Diff exposing (diffChars, Change(..))
 
 
 {-| The result of a single test run: either a [`pass`](#pass) or a
@@ -53,26 +54,24 @@ type alias Expectation =
 
     -- Passes because (0 == 0) is True
 
-Failures resemble code written in pipeline style, so you can tell
-which argument is which:
-
-    -- Fails because the expected value didn't split the space in "Betty Botter"
-    String.split " " "Betty Botter bought some butter"
-        |> Expect.equal [ "Betty Botter", "bought", "some", "butter" ]
+Failures are reported in a diff format between the actual and expected inputs.
 
     {-
+    Unexpected differences:
+        "[-t-]{+T+}hese strings[- really-] are[- -]n[-o-]{+'+}t quite equal{+.+}"
 
-    [ "Betty", "Botter", "bought", "some", "butter" ]
-    ╷
-    │ Expect.equal
-    ╵
-    [ "Betty Botter", "bought", "some", "butter" ]
+
+    Unexpected differences:
+        { a = [1{+,2+},3], b = "test[-?-]", c = Just [-1-]{+3+} }
 
     -}
 -}
 equal : a -> a -> Expectation
-equal =
-    compareWith "Expect.equal" (==)
+equal expected actual =
+    if actual == expected then
+        pass
+    else
+        fail (reportDiff actual expected)
 
 
 {-| Passes if the arguments are not equal.
@@ -525,6 +524,27 @@ reportFailure comparison expected actual =
     , expected
     ]
         |> String.join "\n"
+
+
+reportDiff : a -> a -> String
+reportDiff expected actual =
+    let
+        toDiffString diff out =
+            case diff of
+                NoChange a ->
+                    out ++ a
+
+                Changed a b ->
+                    [ out, "[-", a, "-]{+", b, "+}" ] |> String.join ""
+
+                Added a ->
+                    [ out, "{+", a, "+}" ] |> String.join ""
+
+                Removed a ->
+                    [ out, "[-", a, "-]" ] |> String.join ""
+    in
+        "Unexpected differences:\n"
+            ++ List.foldl toDiffString "" (diffChars (toString expected) (toString actual))
 
 
 reportCollectionFailure : String -> a -> b -> List c -> List d -> String

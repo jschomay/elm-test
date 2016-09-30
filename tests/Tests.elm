@@ -15,8 +15,21 @@ import Random.Pcg as Random
 
 all : Test
 all =
-    Test.concat
-        [ readmeExample, bug39, fuzzerTests, shrinkingTests ]
+    Test.concat [ someFailures, readmeExample, bug39, fuzzerTests, shrinkingTests ]
+
+
+someFailures : Test
+someFailures =
+    describe "What do failures look like?"
+        [ test "for Expect.equal with strings"
+            <| \() ->
+                Expect.equal "These strings aren't quite equal." "these strings really are not quite equal"
+        , test "for Expect.equal with records"
+            <| \() ->
+                Expect.equal
+                  {a = [1,2,3], b = "test", c = Just 3}
+                  {a = [1,3], b = "test?", c = Just 1}
+        ]
 
 
 {-| Regression test for https://github.com/elm-community/elm-test/issues/39
